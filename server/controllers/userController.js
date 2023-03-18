@@ -3,40 +3,54 @@ const bcrypt = require('bcrypt')
 const { v4: uuidv4} = require('uuid')
 const jwt = require('jsonwebtoken')
 
-exports.login = async (req,res) => {
-    const {username, password} = req.body
-    const user = await USER.findOne({username})
-    if(!user) return res.status(404).json({msg: 'User tidak ditemukan'})
-    if(!(await bcrypt.compare(password, user.password))) return res.status(403).json({msg: 'Password invalid'})
+exports.login = async (req, res) => {
+  const { username, password } = req.body;
+  const user = await USER.findOne({ username });
+  if (!user) return res.status(404).json({ msg: "User tidak ditemukan" });
+  if (!(await bcrypt.compare(password, user.password)))
+    return res.status(403).json({ msg: "Password invalid" });
 
-    req.session.userId = user.uuid
-    req.session.authenticated = true
+  req.session.userId = user.uuid;
+  req.session.authenticated = true;
 
-    const token = jwt.sign({username: user.username, email: user.email, fullname: user.email}, process.env.TOKEN_SECRET,{
-        expiresIn: '20s'
-    })
-    const refreshToken = jwt.sign({username: user.username, email: user.email, fullname: user.email}, process.env.REFRESH_TOKEN_SECRET,{
-        expiresIn: '1d'
-    })
-    
-    res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        signed: true
-    })
-    res.status(200).json({token})
-}
+  const token = jwt.sign(
+    { username: user.username, email: user.email, fullname: user.email },
+    process.env.TOKEN_SECRET,
+    {
+      expiresIn: "20s",
+    }
+  );
+  const refreshToken = jwt.sign(
+    { username: user.username, email: user.email, fullname: user.email },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: "1d",
+    }
+  );
 
-exports.refreshToken = async (req,res) => {
-    const refreshToken = req.signedCookies.refreshToken
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    signed: true,
+    maxAge: 1000 * 3600 * 24,
+  });
+  res.status(200).json({ token });
+};
 
-    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
-        if(err) return res.json({msg: err.message})
-        const token = jwt.sign({username: user.username, email: user.email, fullname: user.email}, process.env.TOKEN_SECRET,{
-            expiresIn: '20s'
-        })
-        return res.json({token})
-    })
-}
+exports.refreshToken = async (req, res) => {
+  const refreshToken = req.signedCookies.refreshToken;
+
+  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+    if (err) return res.json({ msg: err.message });
+    const token = jwt.sign(
+      { username: user.username, email: user.email, fullname: user.email },
+      process.env.TOKEN_SECRET,
+      {
+        expiresIn: "20s",
+      }
+    );
+    return res.json({ token });
+  });
+};
 
 exports.getme = async (req,res) => {
     const userId = req.session.userId
