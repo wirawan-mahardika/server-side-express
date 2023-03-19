@@ -97,3 +97,28 @@ exports.signup = async (req,res) => {
             res.status(403).json({msg: 'Gagal signup'})
         })
 }
+
+exports.getUsers = (req, res) => {
+  const shouldAdmin = req.headers["x-user"];
+  if (shouldAdmin !== "admin")
+    return res.status(403).json({ msg: "Failed to do the action" });
+
+  USER.find()
+    .then((result) => {
+      res.status(200).json(result);
+    })
+    .catch((err) => {
+      res.status(403).json({ msg: "cannot find users" });
+    });
+};
+
+exports.deleteUser = (req, res) => {
+  const shouldAdmin = req.headers["x-user"];
+  if (shouldAdmin !== "admin")
+    return res.status(403).json({ msg: "Failed to do the action" });
+
+  const id = req.params.id;
+  USER.findByIdAndDelete({ _id: id }).then((result) => {
+    res.status(200).json(result);
+  });
+};
